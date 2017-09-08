@@ -13,7 +13,7 @@
 #include "fs.h"
 #include "proc.h"
 #include "tty.h"
-#include "console.h"
+#include "console.h"d
 #include "global.h"
 #include "proto.h"
 
@@ -26,15 +26,18 @@
  * 
  *****************************************************************************/
 char location[128] = "/";
-char filepath[128] = "";
-char users[2][128] = {"empty", "empty"};
-char passwords[10][128];
-char files[20][128];
-char userfiles[20][128];
-int filequeue[50];
-int filecount = 0;
-int usercount = 0;
-int leiflag = 0;
+char users[2][128] = {"sjw", "empty"};
+char curUser[128]="sjw";
+char curFile[128]="Usr1";
+char fileNames[20][128]={"","Usr1"};
+
+int FAT[5][5]={0};
+int fileCount=2;
+char passwords[2][128]={"123","456"};
+
+
+
+
 
 PUBLIC int kernel_main()
 {
@@ -357,12 +360,12 @@ void shabby_shell(const char * tty_name)
 	int fd_stdout = open(tty_name, O_RDWR);
 	assert(fd_stdout == 1);
 
-	char rdbuf[128];
+	char rdbuf[128]; 
 	char cmd[128];
-    	char arg1[128];
-    	char arg2[128];
-    	char buf[1024];
-	int j = 0;
+	char arg1[128];
+        char arg2[128]; 
+	char buf[1024]; 
+	int j = 0; 
 
 	//colorful();
 	//clear();
@@ -371,9 +374,9 @@ void shabby_shell(const char * tty_name)
 	printf("press any key to start:\n");
 	int r = read(0, rdbuf, 70);
 
-	//int fq = open("User", O_CREAT | O_RDWR);
-	//close(fq);
-	//initFs();
+	int fq = open("Usr1", O_CREAT | O_RDWR);
+	close(fq);
+        initFS(); 
 
 	while (1) {
 
@@ -413,7 +416,7 @@ void shabby_shell(const char * tty_name)
 
 		int fd = open(argv[0], O_RDWR);
 		if (fd == -1) {
-			printf("fd == -1\n");
+		  //	printf("fd == -1\n");
 			if (rdbuf[0]) {
 				int i = 0, j = 0;
 				/* get command */
@@ -439,12 +442,42 @@ void shabby_shell(const char * tty_name)
             				i++;
             				j++;
         			}
-				printf("%s",cmd);
+				//	printf("%s\n",cmd);
+				//	printf("%s\n",arg1);
+				//	printf("%s\n",arg2);
 				/* cmd */
 				 if(strcmp(cmd, "what") == 0)
-				{
+				{      
 					printf("what function success\n");
 				}
+				if(strcmp(cmd, "login")==0)
+				{
+				login(arg1,arg2);
+				}
+				if(strcmp(cmd,"createFile")==0)
+				  {
+				     createFile(arg1);
+				  }
+				if(strcmp(cmd,"testArr")==0)
+				  {
+				   
+				    printf("location:      %s\n",location);
+				    printf("fileNames:\n");
+			        
+				    for(i=0;i<20;i++)
+				      printf("%s | ",fileNames[i]);
+				    printf("FAT:\n");
+
+				    for(i=0;i<5;i++)
+				      {
+					for(j=0;j<5;j++)
+					  printf("%d",FAT[i][j]);
+					printf("\n");
+				      }
+				    printf("current file nums %d\n",fileCount);
+				    
+				  }
+
 			}
 		}
 		else {
@@ -475,168 +508,83 @@ void clearArr(char *arr, int length)
 }
 
 
-
-
-
-
-
-
-
-
-
-
+void login(char * userName, char * passWord)
+{
+	printf("login");
+	int i=0;
+	for( i=0;i<2;i++)
+	   { 
+		if(strcmp(userName,users[i])==0 && strcmp(passWord,passwords[i])==0)
+			{
+                           printf("welcome!    %s",userName);
+			  // printf("%d",strlen(location));
+			   break; 
+                           }
+            }	
+}
 
 /* Init FS */
-void initFs()
+void initFS()
 {
-	int fd = -1, n = 0, i = 0, count = 0, k = 0;
-	char bufr[1024] = "";
-	char bufp[1024] = "";
-	char buff[1024] = "";
-
-	for (i = 0; i < 500; i++)
-		filequeue[i] = 1;
-
-	fd = open("myUsers", O_CREAT | O_RDWR);
-	close(fd);
-	fd = open("myUsersPassword", O_CREAT | O_RDWR);
-	close(fd);
-	fd = open("fileLogs", O_CREAT | O_RDWR);
-	close(fd);
-	fd = open("user1", O_CREAT | O_RDWR);
-	close(fd);
-	fd = open("user2", O_CREAT | O_RDWR);
-	close(fd);
-	/* init users */
-	fd = open("myUsers", O_RDWR);
-        printf("befor read");
-	n = read(fd, bufr, 1024);
-	printf("%s",bufr);
-	printf("read success");
-	bufr[strlen(bufr)] = '\0';
-	for (i = 0; i < strlen(bufr); i++)
-	{
-		if (bufr[i] != ' ')
-		{
-			users[count][k] = bufr[i];
-			k++;
-		}
-		else
-		{
-			while (bufr[i] == ' ')
-			{
-				i++;
-				if (bufr[i] == '\0')
-				{
-					users[count][k] = '\0';
-					if (strcmp(users[count], "empty") != 0)
-						usercount++;
-					count++;
-					break;
-				}
-			}
-			if (bufr[i] == '\0')
-			{
-				break;
-			}
-			i--;
-			users[count][k] = '\0';
-			if (strcmp(users[count], "empty") != 0)
-						usercount++;
-			k = 0;
-			count++;
-		}
-	}
-	close(fd);
-	count = 0;
-	k = 0;
-	
-	/* init password */
-	fd = open("myUsersPassword", O_RDWR);
-	n = read(fd, bufp, 1024);
-	for (i = 0; i < strlen(bufp); i++)
-	{
-		if (bufp[i] != ' ')
-		{
-			passwords[count][k] = bufp[i];
-			k++;
-		}
-		else
-		{
-			while (bufp[i] == ' ')
-			{
-				i++;
-				if (bufp[i] == '\0')
-				{
-					count++;
-					break;
-				}
-			}
-			if (bufp[i] == '\0')
-				break;
-			i--;
-			passwords[count][k] = '\0';
-			k = 0;
-			count++;
-		}
-	}
-	close(fd);
-	count = 0;
-	k = 0;
-
-	/* init files */
-	fd = open("fileLogs", O_RDWR);
-	n = read(fd, buff, 1024);
-	for (i = 0; i <= strlen(buff); i++)
-	{
-		if (buff[i] != ' ')
-		{
-			files[count][k] = buff[i];
-			k++;
-		}
-		else
-		{
-			while (buff[i] == ' ')
-			{
-				i++;
-				if (buff[i] == '\0')
-				{
-					break;
-				}
-			}
-			if (buff[i] == '\0')
-			{
-				files[count][k] = '\0';
-				count++;
-				break;
-			}
-			i--;
-			files[count][k] = '\0';
-			k = 0;
-			count++;
-		}
-	}
-	close(fd);
-	
-	int empty = 0;
-	for (i = 0; i < count; i++)
-	{
-		char flag[7];
-		strcpy(flag, "empty");
-		flag[5] = '0' + i;
-		flag[6] = '\0';
-		fd = open(files[i], O_CREAT | O_RDWR);
-		close(fd);
-	
-		if (strcmp(files[i], flag) != 0)
-			filequeue[i] = 0;
-		else
-			empty++;
-	}
-	filecount = count - empty;
+  int fp=-1;
+ 
+  /* init users */
+  
+  fp=open("Usr1", O_RDWR);
+  assert(fp!=-1);
+  // write(fp,"sjw",3);
+  printf("%d",fp);
+  close(fp);
+  
+  clearArr(fileNames[1],strlen(fileNames[1]));
+  strcpy(fileNames[1],"Usr1");
 }
 
 
+int getPos()
+{
+  int i=1;
+  for(;i<fileCount;i++)
+    {
+      if(strcmp(fileNames[i],curFile)==0)
+	return i;
+    }
+  printf("getPos\n");
+  return 0;
+}
+
+void createFile(char * fileName)
+{
+  int fp=-1;
+  int curPos=0;                               //current file's position in FAT
+
+  curPos=getPos();
+  if(curPos==0)
+    printf("curPos=0\n");
+  else
+    {
+      printf("curPos:  %d\n",curPos);
+      int i=1;
+      while(FAT[curPos][i]!=0  && i<5){
+  	i++;
+      };
+      
+      if(i==5)
+  	printf("%d file has been full",curPos);
+      else
+  	{
+	  fp=open(fileName,O_CREAT);
+	  assert(fp!=-1);
+	  printf("create %s fp:%d \n",fileName,fp);
+	  close(fp);
+	  fileCount++;
+	  strcpy(fileNames[fileCount],fileName);       //  add File in Filenames
+  	  FAT[curPos][i]=fileCount;
+  	}
+    }
+
+
+}
 
 
 
